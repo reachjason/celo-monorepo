@@ -4,11 +4,9 @@ import { StyleSheet, View } from 'react-native'
 import CCLicense from 'src/brandkit/common/CCLicense'
 import { brandStyles, GAP } from 'src/brandkit/common/constants'
 import Page, { ICONS_PATH } from 'src/brandkit/common/Page'
-import PageHeadline from 'src/brandkit/common/PageHeadline'
 import IconShowcase from 'src/brandkit/common/Showcase'
 import { AssetTypes, EXCHANGE_ICONS_PKG_TRACKING, trackDownload } from 'src/brandkit/tracking'
 import { NameSpaces, useTranslation } from 'src/i18n'
-import Button, { BTN } from 'src/shared/Button.3'
 import { hashNav } from 'src/shared/menu-items'
 
 const icons = [
@@ -19,7 +17,7 @@ const icons = [
     uri: '/assets/marketplace-icons/icon-celo-dollar-color.zip',
   },
   {
-    name: 'cGLD Exchange Icon',
+    name: 'CELO Exchange Icon',
     description: 'Full Color\n',
     preview: '/images/marketplace-icons/icon-celo-gold-color-f.svg',
     uri: '/assets/marketplace-icons/icon-celo-gold-color.zip',
@@ -33,7 +31,7 @@ const icons = [
     variant: 'circle-white',
   },
   {
-    name: 'cGLD Exchange Icon',
+    name: 'CELO Exchange Icon',
     description: 'Monochrome\n',
     preview: '/images/marketplace-icons/icon-celo-gold-black-f.svg',
     uri: '/assets/marketplace-icons/icon-celo-gold-black.zip',
@@ -47,7 +45,7 @@ const icons = [
     variant: 'circle-black',
   },
   {
-    name: 'cGLD Exchange Icon',
+    name: 'CELO Exchange Icon',
     description: 'Reverse Monochrome\n',
     preview: '/images/marketplace-icons/icon-celo-gold-white-f.svg',
     uri: '/assets/marketplace-icons/icon-celo-gold-white.zip',
@@ -79,23 +77,15 @@ export interface IconData {
 }
 
 function Overview() {
-  const { t } = useTranslation(NameSpaces.brand)
+  // const { t } = useTranslation(NameSpaces.brand)
 
-  const onPressDownload = React.useCallback(async () => {
-    await trackDownload(EXCHANGE_ICONS_PKG_TRACKING)
-  }, [])
+  // const onPressDownload = React.useCallback(async () => {
+  //   await trackDownload(EXCHANGE_ICONS_PKG_TRACKING)
+  // }, [])
 
   return (
     <View style={styles.container}>
-      <PageHeadline title={t('exchangeIcons.title')} headline={t('exchangeIcons.headline')} />
-
-      <Button
-        kind={BTN.PRIMARY}
-        text={t('logo.overviewBtn')}
-        style={styles.download}
-        onPress={onPressDownload}
-        href="/assets/CeloMarketplaceIcons.zip"
-      />
+      {/* <Markdownn content /> */}
 
       <CCLicense textI18nKey="exchangeIcons.license" />
 
