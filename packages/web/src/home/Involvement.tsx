@@ -71,7 +71,6 @@ export default function Involvement() {
 }
 
 const styles = StyleSheet.create({
-  root: {},
   buttons: {
     alignItems: 'center',
     flexWrap: 'wrap-reverse',
@@ -81,7 +80,18 @@ const styles = StyleSheet.create({
     transitionDuration: '300ms',
     justifyContent: 'space-between',
   },
-  content: {},
+  content: {
+    animationDelay: '250ms',
+    animationIterationCount: 1,
+    animationFillMode: 'both',
+    animationDuration: '1200ms',
+    animationKeyframes: [
+      {
+        from: { opacity: 0 },
+        to: { opacity: 1 },
+      },
+    ],
+  },
   textArea: {
     minHeight: 120,
   },
@@ -151,8 +161,8 @@ function Content({ path }) {
   const { isMobile } = useScreenSize()
   return (
     <>
-      <Cell span={Spans.half} style={styles.root}>
-        <View style={styles.content} nativeID={Paths[path]}>
+      <Cell span={Spans.half}>
+        <View key={path} style={styles.content} nativeID={Paths[path]}>
           <H2 style={textStyles.invert}>{t(`involve.paths.${path}.title`)}</H2>
           <Text
             style={[fonts.p, textStyles.invert, standardStyles.elementalMargin, styles.textArea]}
