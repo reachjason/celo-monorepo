@@ -1,12 +1,29 @@
 import CountryData from 'country-data'
 import {
-  PhoneNumber,
-  PhoneNumberFormat,
-  PhoneNumberType,
-  PhoneNumberUtil,
-} from 'google-libphonenumber'
+  CountryCode,
+  format,
+  getCountryCallingCode,
+  getExampleNumber as getLibExampleNumber,
+  getNumberType,
+  isValidNumber,
+  isValidNumberForRegion,
+  parse,
+  ParsedNumber,
+} from 'libphonenumber-js'
+// @ts-ignore
+import EXAMPLES from 'libphonenumber-js/examples.mobile.json'
 import * as Web3Utils from 'web3-utils'
 import { getIdentifierPrefix, IdentifierType } from './attestations'
+
+enum PhoneNumberFormat {
+  E164 = 'E.164',
+  INTERNATIONAL = 'INTERNATIONAL',
+  NATIONAL = 'NATIONAL',
+}
+
+enum NumberType {
+  MOBILE = 'MOBILE',
+}
 
 export interface ParsedPhoneNumber {
   e164Number: string
@@ -16,7 +33,6 @@ export interface ParsedPhoneNumber {
   regionCode?: string
 }
 
-const phoneUtil = PhoneNumberUtil.getInstance()
 const MIN_PHONE_LENGTH = 4
 const PHONE_SALT_SEPARATOR = '__'
 const E164_REGEX = /^\+[1-9][0-9]{1,14}$/
@@ -56,7 +72,7 @@ export function getCountryCode(e164PhoneNumber: string) {
     return null
   }
   try {
-    return phoneUtil.parse(e164PhoneNumber).getCountryCode()
+    return parse(e164PhoneNumber).country
   } catch (error) {
     console.debug(`getCountryCode, number: ${e164PhoneNumber}, error: ${error}`)
     return null
@@ -68,7 +84,7 @@ export function getRegionCode(e164PhoneNumber: string) {
     return null
   }
   try {
-    return phoneUtil.getRegionCodeForNumber(phoneUtil.parse(e164PhoneNumber))
+    return parse(e164PhoneNumber).country
   } catch (error) {
     console.debug(`getRegionCodeForNumber, number: ${e164PhoneNumber}, error: ${error}`)
     return null
@@ -80,7 +96,7 @@ export function getRegionCodeFromCountryCode(countryCode: string) {
     return null
   }
   try {
-    return phoneUtil.getRegionCodeForCountryCode(parseInt(countryCode, 10))
+    return getCountryCallingCode(countryCode as CountryCode)
   } catch (error) {
     console.debug(`getRegionCodeFromCountryCode, countrycode: ${countryCode}, error: ${error}`)
     return null
@@ -128,11 +144,11 @@ export function isE164Number(phoneNumber: string) {
 
 // Actually runs through the parsing instead of using a regex
 export function isE164NumberStrict(phoneNumber: string) {
-  const parsedPhoneNumber = phoneUtil.parse(phoneNumber)
-  if (!phoneUtil.isValidNumber(parsedPhoneNumber)) {
+  const parsedPhoneNumber = parse(phoneNumber)
+  if (!isValidNumber(parsedPhoneNumber)) {
     return false
   }
-  return phoneUtil.format(parsedPhoneNumber, PhoneNumberFormat.E164) === phoneNumber
+  return format(parsedPhoneNumber, PhoneNumberFormat.E164) === phoneNumber
 }
 
 export function parsePhoneNumber(
@@ -147,9 +163,12 @@ export function parsePhoneNumber(
     const defaultRegionCode = defaultCountryCode
       ? getRegionCodeFromCountryCode(defaultCountryCode)
       : null
-    const parsedNumberUnfixed = phoneUtil.parse(phoneNumberRaw, defaultRegionCode || undefined)
-    const parsedCountryCode = parsedNumberUnfixed.getCountryCode()
-    const parsedRegionCode = phoneUtil.getRegionCodeForNumber(parsedNumberUnfixed)
+    const parsedNumberUnfixed = parse(
+      phoneNumberRaw,
+      (defaultRegionCode as CountryCode) || undefined
+    )
+    const parsedCountryCode = parsedNumberUnfixed.countryCallingCode
+    const parsedRegionCode = parsedNumberUnfixed.country
     const parsedNumber = handleSpecialCasesForParsing(
       parsedNumberUnfixed,
       parsedCountryCode,
@@ -160,20 +179,28 @@ export function parsePhoneNumber(
       return null
     }
 
-    const isValid = phoneUtil.isValidNumberForRegion(parsedNumber, parsedRegionCode)
-
+    const isValid = isValidNumberForRegion(parsedNumber.phone, parsedRegionCode)
     return isValid
       ? {
-          e164Number: phoneUtil.format(parsedNumber, PhoneNumberFormat.E164),
-          displayNumber: handleSpecialCasesForDisplay(parsedNumber, parsedCountryCode),
-          displayNumberInternational: phoneUtil.format(
-            parsedNumber,
-            PhoneNumberFormat.INTERNATIONAL
-          ),
-          countryCode: parsedCountryCode,
+          e164Number: '',
+          displayNumber: '',
+          displayNumberInternational: '',
+          countryCode: 0,
           regionCode: parsedRegionCode,
         }
       : null
+    // return isValid
+    //   ? {
+    //       e164Number: format(parsedNumber, PhoneNumberFormat.E164),
+    //       displayNumber: handleSpecialCasesForDisplay(parsedNumber, parsedCountryCode),
+    //       displayNumberInternational: format(
+    //         parsedNumber,
+    //         PhoneNumberFormat.INTERNATIONAL
+    //       ),
+    //       countryCode: parsedCountryCode,
+    //       regionCode: parsedRegionCode,
+    //     }
+    //   : null
   } catch (error) {
     console.debug(`phoneNumbers/parsePhoneNumber/Failed to parse phone number, error: ${error}`)
     return null
@@ -181,8 +208,8 @@ export function parsePhoneNumber(
 }
 
 function handleSpecialCasesForParsing(
-  parsedNumber: PhoneNumber,
-  countryCode?: number,
+  parsedNumber: ParsedNumber,
+  countryCode?: any,
   regionCode?: string
 ) {
   if (!countryCode || !regionCode) {
@@ -203,39 +230,38 @@ function handleSpecialCasesForParsing(
 
 // TODO(Rossy) Given the inconsistencies of numbers around the world, we should
 // display e164 everywhere to ensure users knows exactly who their sending money to
-function handleSpecialCasesForDisplay(parsedNumber: PhoneNumber, countryCode?: number) {
-  switch (countryCode) {
-    // Argentina
-    // The Google lib formatter incorretly adds '15' to the nationally formatted number for Argentina
-    // However '15' is only needed when calling a mobile from a landline
-    case 54:
-      return phoneUtil
-        .format(parsedNumber, PhoneNumberFormat.INTERNATIONAL)
-        .replace(/\+54(\s)?/, '')
+// function handleSpecialCasesForDisplay(parsedNumber: PhoneNumber, countryCode?: number) {
+//   switch (countryCode) {
+//     // Argentina
+//     // The Google lib formatter incorretly adds '15' to the nationally formatted number for Argentina
+//     // However '15' is only needed when calling a mobile from a landline
+//     case 54:
+//       return format(parsedNumber.nationalNumber, PhoneNumberFormat.INTERNATIONAL)
+//         .replace(/\+54(\s)?/, '')
 
-    case 231:
-      const formatted = phoneUtil.format(parsedNumber, PhoneNumberFormat.NATIONAL)
-      return formatted && formatted[0] === '0' ? formatted.slice(1) : formatted
+//     case 231:
+//       const formatted = format(parsedNumber.nationalNumber, PhoneNumberFormat.NATIONAL)
+//       return formatted && formatted[0] === '0' ? formatted.slice(1) : formatted
 
-    default:
-      return phoneUtil.format(parsedNumber, PhoneNumberFormat.NATIONAL)
-  }
-}
+//     default:
+//       return format(parsedNumber.nationalNumber, PhoneNumberFormat.NATIONAL)
+//   }
+// }
 
 /**
  * Some countries require a prefix before the area code depending on if the number is
  * mobile vs landline and international vs national
  */
 function prependToFormMobilePhoneNumber(
-  parsedNumber: PhoneNumber,
+  parsedNumber: ParsedNumber,
   regionCode: string,
   prefix: string
 ) {
-  if (phoneUtil.getNumberType(parsedNumber) === PhoneNumberType.MOBILE) {
+  if (getNumberType(parsedNumber) === NumberType.MOBILE) {
     return parsedNumber
   }
 
-  let nationalNumber = phoneUtil.format(parsedNumber, PhoneNumberFormat.NATIONAL)
+  let nationalNumber = format(parsedNumber, PhoneNumberFormat.NATIONAL)
   // Nationally formatted numbers sometimes contain leading 0
   if (nationalNumber.charAt(0) === '0') {
     nationalNumber = nationalNumber.slice(1)
@@ -245,8 +271,8 @@ function prependToFormMobilePhoneNumber(
     return null
   }
 
-  const adjustedNumber = phoneUtil.parse(prefix + nationalNumber, regionCode)
-  return phoneUtil.getNumberType(adjustedNumber) === PhoneNumberType.MOBILE ? adjustedNumber : null
+  const adjustedNumber = parse(prefix + nationalNumber, regionCode as CountryCode)
+  return getNumberType(adjustedNumber) === NumberType.MOBILE ? adjustedNumber : null
 }
 
 export function anonymizedPhone(phoneNumber: string) {
@@ -258,16 +284,14 @@ export function getExampleNumber(
   useOnlyZeroes: boolean = true,
   isInternational: boolean = false
 ) {
-  const examplePhone = phoneUtil.getExampleNumber(
-    getRegionCodeFromCountryCode(regionCode) as string
-  )
+  const examplePhone = getLibExampleNumber(regionCode as CountryCode, EXAMPLES)
 
   if (!examplePhone) {
     return
   }
 
-  const formatedExample = phoneUtil.format(
-    examplePhone,
+  const formatedExample = format(
+    examplePhone.nationalNumber,
     isInternational ? PhoneNumberFormat.INTERNATIONAL : PhoneNumberFormat.NATIONAL
   )
 
