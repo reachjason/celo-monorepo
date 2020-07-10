@@ -1,12 +1,30 @@
 import CountryData from 'country-data'
-import {
-  PhoneNumber,
-  PhoneNumberFormat,
-  PhoneNumberType,
-  PhoneNumberUtil,
-} from 'google-libphonenumber'
+import * as LibNumber from 'libphonenumber-js'
 import * as Web3Utils from 'web3-utils'
 import { getIdentifierPrefix, IdentifierType } from './attestations'
+
+type PhoneNumber = LibNumber.ParsedNumber
+type RegionCode = LibNumber.CountryCode
+enum PhoneNumberFormat {
+  E164 = 'E.164',
+  INTERNATIONAL = 'INTERNATIONAL',
+  NATIONAL = 'NATIONAL',
+  RFC3966 = 'RFC3966',
+}
+
+enum PhoneNumberType {
+  'PREMIUM_RATE' = 'PREMIUM_RATE',
+  'TOLL_FREE' = 'TOLL_FREE',
+  'SHARED_COST' = 'SHARED_COST',
+  'VOIP' = 'VOIP',
+  'PERSONAL_NUMBER' = 'PERSONAL_NUMBER',
+  'PAGER' = 'PAGER',
+  'UAN' = 'UAN',
+  'VOICEMAIL' = 'VOICEMAIL',
+  'FIXED_LINE_OR_MOBILE' = 'FIXED_LINE_OR_MOBILE',
+  'FIXED_LINE' = 'FIXED_LINE',
+  'MOBILE' = 'MOBILE',
+}
 
 export interface ParsedPhoneNumber {
   e164Number: string
@@ -16,7 +34,7 @@ export interface ParsedPhoneNumber {
   regionCode?: string
 }
 
-const phoneUtil = PhoneNumberUtil.getInstance()
+const phoneUtil = LibNumber
 const MIN_PHONE_LENGTH = 4
 const PHONE_SALT_SEPARATOR = '__'
 const E164_REGEX = /^\+[1-9][0-9]{1,14}$/
@@ -51,12 +69,18 @@ export const getPhoneHash = (phoneNumber: string, salt?: string): string => {
   return Web3Utils.soliditySha3({ type: 'string', value })
 }
 
+function getCountrydata(countryCode: any) {
+  const countries = CountryData.lookup.countries({ countryCallingCodes: countryCode })
+  const country = countries.length > 0 ? countries[0] : undefined
+  return country
+}
+
 export function getCountryCode(e164PhoneNumber: string) {
   if (!e164PhoneNumber) {
     return null
   }
   try {
-    return phoneUtil.parse(e164PhoneNumber).getCountryCode()
+    return phoneUtil.parsePhoneNumber(e164PhoneNumber).countryCallingCode
   } catch (error) {
     console.debug(`getCountryCode, number: ${e164PhoneNumber}, error: ${error}`)
     return null
@@ -68,19 +92,21 @@ export function getRegionCode(e164PhoneNumber: string) {
     return null
   }
   try {
-    return phoneUtil.getRegionCodeForNumber(phoneUtil.parse(e164PhoneNumber))
+    return phoneUtil.parsePhoneNumber(e164PhoneNumber).country
   } catch (error) {
     console.debug(`getRegionCodeForNumber, number: ${e164PhoneNumber}, error: ${error}`)
     return null
   }
 }
 
+// Returns 2 letter ISO 3166 when given numeric country calling codes
 export function getRegionCodeFromCountryCode(countryCode: string) {
   if (!countryCode) {
     return null
   }
   try {
-    return phoneUtil.getRegionCodeForCountryCode(parseInt(countryCode, 10))
+    const country = getCountrydata(countryCode)
+    return country ? (country.alpha2 as LibNumber.CountryCode) : null
   } catch (error) {
     console.debug(`getRegionCodeFromCountryCode, countrycode: ${countryCode}, error: ${error}`)
     return null
@@ -128,7 +154,7 @@ export function isE164Number(phoneNumber: string) {
 
 // Actually runs through the parsing instead of using a regex
 export function isE164NumberStrict(phoneNumber: string) {
-  const parsedPhoneNumber = phoneUtil.parse(phoneNumber)
+  const parsedPhoneNumber = phoneUtil.parsePhoneNumber(phoneNumber)
   if (!phoneUtil.isValidNumber(parsedPhoneNumber)) {
     return false
   }
@@ -147,12 +173,15 @@ export function parsePhoneNumber(
     const defaultRegionCode = defaultCountryCode
       ? getRegionCodeFromCountryCode(defaultCountryCode)
       : null
-    const parsedNumberUnfixed = phoneUtil.parse(phoneNumberRaw, defaultRegionCode || undefined)
-    const parsedCountryCode = parsedNumberUnfixed.getCountryCode()
-    const parsedRegionCode = phoneUtil.getRegionCodeForNumber(parsedNumberUnfixed)
+    const parsedNumberUnfixed = phoneUtil.parsePhoneNumber(
+      phoneNumberRaw,
+      defaultRegionCode || undefined
+    )
+    const parsedCallingCode = parsedNumberUnfixed.countryCallingCode
+    const parsedRegionCode = parsedNumberUnfixed.country
     const parsedNumber = handleSpecialCasesForParsing(
       parsedNumberUnfixed,
-      parsedCountryCode,
+      Number(parsedCallingCode),
       parsedRegionCode
     )
 
@@ -160,22 +189,24 @@ export function parsePhoneNumber(
       return null
     }
 
-    const isValid = phoneUtil.isValidNumberForRegion(parsedNumber, parsedRegionCode)
+    const isValid = phoneUtil.isValidNumberForRegion(parsedNumber.phone, parsedRegionCode)
 
     return isValid
       ? {
           e164Number: phoneUtil.format(parsedNumber, PhoneNumberFormat.E164),
-          displayNumber: handleSpecialCasesForDisplay(parsedNumber, parsedCountryCode),
+          displayNumber: handleSpecialCasesForDisplay(parsedNumber, Number(parsedCallingCode)),
           displayNumberInternational: phoneUtil.format(
             parsedNumber,
             PhoneNumberFormat.INTERNATIONAL
           ),
-          countryCode: parsedCountryCode,
+          countryCode: parsedCallingCode ? Number(parsedCallingCode) : undefined,
           regionCode: parsedRegionCode,
         }
       : null
   } catch (error) {
-    console.debug(`phoneNumbers/parsePhoneNumber/Failed to parse phone number, error: ${error}`)
+    console.debug(
+      `phoneNumbers/parsePhoneNumber/Failed to parsePhoneNumber phone number, error: ${error}`
+    )
     return null
   }
 }
@@ -210,7 +241,7 @@ function handleSpecialCasesForDisplay(parsedNumber: PhoneNumber, countryCode?: n
     // However '15' is only needed when calling a mobile from a landline
     case 54:
       return phoneUtil
-        .format(parsedNumber, PhoneNumberFormat.INTERNATIONAL)
+        .formate(parsedNumber, PhoneNumberFormat.INTERNATIONAL)
         .replace(/\+54(\s)?/, '')
 
     case 231:
@@ -245,7 +276,10 @@ function prependToFormMobilePhoneNumber(
     return null
   }
 
-  const adjustedNumber = phoneUtil.parse(prefix + nationalNumber, regionCode)
+  const adjustedNumber = phoneUtil.parsePhoneNumber(
+    prefix + nationalNumber,
+    regionCode as RegionCode
+  )
   return phoneUtil.getNumberType(adjustedNumber) === PhoneNumberType.MOBILE ? adjustedNumber : null
 }
 
@@ -258,16 +292,14 @@ export function getExampleNumber(
   useOnlyZeroes: boolean = true,
   isInternational: boolean = false
 ) {
-  const examplePhone = phoneUtil.getExampleNumber(
-    getRegionCodeFromCountryCode(regionCode) as string
-  )
+  const examplePhone = phoneUtil.getExampleNumber(regionCode as RegionCode)
 
   if (!examplePhone) {
     return
   }
 
   const formatedExample = phoneUtil.format(
-    examplePhone,
+    examplePhone.nationalNumber,
     isInternational ? PhoneNumberFormat.INTERNATIONAL : PhoneNumberFormat.NATIONAL
   )
 
