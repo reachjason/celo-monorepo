@@ -13,7 +13,7 @@ const FAQs = [
     q: 'What is Celo?',
     a: (
       <>
-        Celo is an open platform for fast, secure, stable digital payments to any mobile number at a
+        Celo is an open platform for fast, secure, and stable digital payments to any mobile number at a
         fraction of today’s cost. You can learn more{' '}
         <Button text="here" href="https://celo.org" kind={BTN.INLINE} />.
       </>
@@ -32,7 +32,7 @@ const FAQs = [
   {
     q: 'What is an Invitation Code and why do I need one?',
     a:
-      'An invitation code is a temporary account pre-loaded with Celo Gold or Celo Dollars. A small fee is needed to verify yourself on the Celo Network, and the invitation code contains the amount to cover this fee.',
+      'An invitation code is a temporary account pre-loaded with either Celo native asset (CELO) or Celo Dollars (cUSD). A small fee is needed to verify yourself on the Celo Network, and the invitation code contains the amount to cover this fee.',
   },
   {
     q: 'I lost my phone and can no longer access my wallet - what do I do?',
@@ -40,9 +40,9 @@ const FAQs = [
       'If you’ve lost your phone, or just generally can’t access your wallet, you’ll need to pull out that handy backup key that you wrote down earlier when you first set up your wallet. Go ahead and download the wallet again from Google Play store, and then tap the “Already have a wallet? Import it” link when you open the app. From there, you’ll be prompted to input in your backup key - and then you should be good to go!',
   },
   {
-    q: 'What are Celo Dollars and what is Celo Gold?',
+    q: 'What are Celo Dollars and what is the Celo native asset?',
     a:
-      'Celo Dollars are a way for you to send and receive value and make social payments to your friends. If you want to say thank you to  your friend for dinner last night, you can send them Celo Dollars. Celo Gold is more like real gold, where there is a fixed supply of it and, consequently, the price can go up or down depending on the demand. You can keep value as Celo Gold or Celo Dollars.',
+      'Celo Dollars (or cUSD) are a way for you to send and receive stable value. You can use this to do things like make social payments to your friends and family. Celo native assets (or CELO), are a different kind of variable currency with a fixed supply, and consequently, the price can go up or down depending on demand. You can keep value as either CELO or cUSD.',
   },
   {
     q: 'What if I want to invite someone and but don’t want to send them money?',
@@ -55,8 +55,8 @@ const FAQs = [
       'In order to perform certain transactions, users are required to pay a small “fee” for the actual computations to take place. When you see a “fee”, like when inviting someone for instance, it covers the computational costs of the network.',
   },
   {
-    q: 'Can I get the Celo Wallet app on my iPhone?',
-    a: 'Not at this time. For now, the Celo Wallet is only available on Android.',
+    q: 'Can I get the Celo Wallet app on my phone?',
+    a: 'Yes, the Celo Wallet is currently available on either iPhone or Android.',
   },
   {
     q: 'What is happening when I verify my phone number?',
@@ -79,7 +79,7 @@ const FAQs = [
       'Make sure that you prompt them to do so! They’ll need to set up a wallet to receive the transaction. If it is not claimed within 5 days, you will see a notification that allows you to either remind them or claim the value back.',
   },
   {
-    q: 'What data is celo collecting?',
+    q: 'What data is Celo collecting?',
     a: (
       <>
         Anonymized analytics (no names, phone numbers, or otherwise personally identifying
@@ -94,27 +94,6 @@ const FAQs = [
     a:
       'If you enable the Celo Wallet app permission to read your contacts’ names and photos, you will see those photos in the Wallet. This enables a more personalized and enhanced experience, and this data will only be available to you on your own device - it is not shared with other users.',
   },
-  // {
-  //   q: 'What is the Celo Rewards app?',
-  //   a: (
-  //     <>
-  //       The Celo Rewards app is a proof of concept for the identity protocol that would allow for any user
-  //       to earn more Celo Gold in the system by actively participating in the verification process of other
-  //       users. Users of the app with spare capacity to send text messages, could earn additional value for
-  //       sending those verification text messages. Read more about the identity protocol{' '}
-  //       <Button text="here" href="https://docs.celo.org/celo-codebase/protocol/identity" kind={BTN.INLINE} />
-  //     </>
-  //   ),
-  // },
-  // {
-  //   q: 'How do I get more Celo Gold?',
-  //   a: (
-  //     <>
-  //       Please, go ahead and download the Celo Rewards app{' '}
-  //       <Button text="here" href="https://celo.org/rewards" kind={BTN.INLINE} />!
-  //     </>
-  //   ),
-  // },
   {
     q: 'Can I cancel a transaction that’s already happened?',
     a:
